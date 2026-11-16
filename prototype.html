@@ -1,0 +1,430 @@
+<title>Gift Tracker Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one phone-width column; summary first, then tappable cards; bottom tab bar; bottom sheets for adding. */
+:root{
+  --bg:#edf1ec; --surface:#ffffff; --ink:#17322a; --muted:#5b6d65; --line:#d5ddd6; --chip:#e2e9e3;
+  --cran:#a8324a; --pine:#2f7a5c; --gold:#b9831a; --teal:#2c6f8a; --plum:#7a4a86;
+  --on-accent:#ffffff; --shade:rgba(15,30,24,.45);
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",sans-serif;
+  --body:"Figtree","Avenir Next","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101b17; --surface:#18261f; --ink:#e9f0ea; --muted:#9db0a6; --line:#2c3e36; --chip:#22332c;
+  --cran:#e57f93; --pine:#6cc3a0; --gold:#e2b458; --teal:#74b9d4; --plum:#c898d3;
+  --on-accent:#10201a; --shade:rgba(0,0,0,.6); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#101b17; --surface:#18261f; --ink:#e9f0ea; --muted:#9db0a6; --line:#2c3e36; --chip:#22332c;
+  --cran:#e57f93; --pine:#6cc3a0; --gold:#e2b458; --teal:#74b9d4; --plum:#c898d3;
+  --on-accent:#10201a; --shade:rgba(0,0,0,.6); color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0;text-align:inherit}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+
+.app{max-width:430px;margin:0 auto;padding-block:18px 104px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:18px}
+.note{font-size:13px;color:var(--muted);background:var(--chip);border-radius:10px;padding:8px 12px}
+h1{font-family:var(--display);font-weight:800;font-size:34px;line-height:1.05;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.1;margin:0;text-wrap:balance}
+h3{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.sub{color:var(--muted);margin:6px 0 0}
+.back{color:var(--pine);font-weight:600;padding:6px 0;align-self:flex-start}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+button.card{display:block;width:100%}
+.big{font-family:var(--display);font-weight:800;font-size:40px;line-height:1}
+.of{color:var(--muted);font-size:15px}
+.delta{font-weight:700;margin:8px 0 12px}
+.delta.over{color:var(--cran)} .delta.ok{color:var(--pine)}
+.bar{height:12px;border-radius:99px;background:var(--chip);overflow:hidden;display:flex}
+.bar.thin{height:8px}
+.bar span{display:block;height:100%;background:var(--c,var(--pine))}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;font-size:15px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c);margin-right:6px}
+.legend .who{color:var(--muted)}
+.hint{font-size:14px;color:var(--muted);margin:10px 0 0}
+
+.gname{font-family:var(--display);font-weight:800;font-size:22px;color:var(--c)}
+.gmeta{font-size:14px;color:var(--muted)}
+.faces{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.face{font-size:13px;font-weight:600;background:var(--chip);border-radius:99px;padding:3px 10px}
+.chev{color:var(--muted);font-size:20px}
+
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.pcard{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:12px;min-width:0}
+.pcard[aria-pressed="true"]{border-color:var(--c)}
+.pcard .pn{font-weight:700;color:var(--c);overflow-wrap:anywhere}
+.sq{display:flex;flex-wrap:wrap;gap:3px;margin:8px 0}
+.sq i{width:12px;height:12px;border-radius:3px;border:2px solid var(--c)}
+.sq i.f{background:var(--c)}
+.pcard small{display:block;color:var(--muted);font-size:13px}
+.pcard.add{border-style:dashed;color:var(--muted);font-weight:600;display:grid;place-items:center;min-height:92px;text-align:center}
+.even{font-size:15px;color:var(--muted);margin:0}
+.even b{color:var(--ink)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--chip);border-radius:99px;padding:4px 12px;font-size:14px}
+.sec{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:6px}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.gift{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--line)}
+.gift:first-child{border-top:0}
+.gift .main{flex:1;min-width:0}
+.gift .t{font-weight:600;overflow-wrap:anywhere}
+.gift .m{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.gift .m a{color:var(--teal)}
+.gift .cost{font-weight:700;text-align:right}
+.side{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pill{font-size:12px;font-weight:700;border-radius:99px;padding:4px 10px;border:1.5px dashed var(--muted);color:var(--muted);white-space:nowrap}
+.pill.bought{border:1.5px solid var(--gold);background:var(--gold);color:var(--on-accent)}
+.pill.wrapped{border:1.5px solid var(--pine);background:var(--pine);color:var(--on-accent)}
+.empty{padding:16px;color:var(--muted);font-size:15px}
+.btn{background:var(--ink);color:var(--bg);font-weight:700;border-radius:14px;padding:13px 16px;text-align:center;width:100%}
+.btn.ghost{background:none;color:var(--ink);border:1.5px solid var(--line)}
+.btn.danger{background:none;color:var(--cran);border:1.5px solid var(--line)}
+.btns{display:flex;gap:10px}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:5;
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.tabs div{max-width:398px;margin:0 auto;display:flex}
+.tabs button{flex:1;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted)}
+.tabs button[aria-current="page"]{color:var(--pine)}
+.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.scrim{position:fixed;inset:0;background:var(--shade);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:430px;max-height:92%;overflow:auto;border-radius:22px 22px 0 0;
+  padding-block:18px calc(18px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+.field label,.field .lab{font-size:13px;font-weight:700;color:var(--muted)}
+.field input[type=text],.field input[type=number],.field input[type=url],.field select{
+  width:100%;background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:11px 12px}
+.two{display:flex;gap:10px}
+.seg{display:flex;background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg label{flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-weight:600;font-size:14px;color:var(--muted);cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg input:checked+label{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1.5px var(--line)}
+.seg input:focus-visible+label{outline:3px solid var(--teal)}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:15px}
+.check input{width:20px;height:20px;margin-top:1px;accent-color:var(--pine)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;
+  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;max-width:calc(100% - 32px);text-align:center}
+</style>
+
+<main class="app" id="app"></main>
+<nav class="tabs" aria-label="Sections"><div id="tabs"></div></nav>
+<div class="scrim" id="scrim" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+const COLORS = ['cran','pine','gold','teal','plum'];
+const CATS = ['Toys','Clothes','Books','Games','Active','Experience','Other'];
+const NEXT = {idea:'bought', bought:'wrapped', wrapped:'idea'};
+const LABEL = {idea:'Idea', bought:'Bought', wrapped:'Wrapped'};
+let uid = 100;
+
+const S = {
+  view:'home', groupId:null, personId:null, sheet:null,
+  groups:[
+    {id:'g1', name:'Kids', color:'cran', budget:500, stock:90, even:true, people:[
+      {id:'p1', name:'Emma', color:'cran'}, {id:'p2', name:'Jack', color:'pine'}, {id:'p3', name:'Noah', color:'gold'}]},
+    {id:'g2', name:'Siblings', color:'pine', budget:200, stock:0, even:false, people:[
+      {id:'p4', name:'Megan', color:'teal'}, {id:'p5', name:'Chris', color:'plum'},
+      {id:'p6', name:'Dana', color:'cran'}, {id:'p7', name:'Paul', color:'pine'}]},
+    {id:'g3', name:'Grandparents', color:'gold', budget:120, stock:0, even:false, people:[
+      {id:'p8', name:'Grandma', color:'gold'}, {id:'p9', name:'Grandpa', color:'teal'}]}
+  ],
+  gifts: [
+    ['p1','Art easel',42.99,'Toys','Target','main','wrapped'],
+    ['p1','Rain boots',24.00,'Clothes','Old Navy','main','bought'],
+    ['p1','Chapter book set',18.49,'Books','Bookshop','main','bought'],
+    ['p1','Roller skates',54.99,'Active','Amazon','main','idea'],
+    ['p1','Unicorn pajamas',16.00,'Clothes','Target','main','idea'],
+    ['p1','Lip balm',3.50,'Other','Target','stocking','bought'],
+    ['p1','Sticker book',5.99,'Books','Target','stocking','bought'],
+    ['p1','Hair clips',6.00,'Other','','stocking','idea'],
+    ['p2','Building brick set',59.99,'Toys','Amazon','main','wrapped'],
+    ['p2','Soccer ball',19.99,'Active','Dick’s','main','bought'],
+    ['p2','Hoodie',28.00,'Clothes','Old Navy','main','bought'],
+    ['p2','Card game',12.99,'Games','Target','main','idea'],
+    ['p2','Toy cars',7.49,'Toys','Target','stocking','bought'],
+    ['p2','Flashlight',8.00,'Other','','stocking','idea'],
+    ['p3','Balance bike',89.00,'Active','REI','main','bought'],
+    ['p3','Winter coat',64.95,'Clothes','Amazon','main','bought'],
+    ['p3','Wooden train',34.00,'Toys','Target','main','wrapped'],
+    ['p3','Board books',14.00,'Books','Bookshop','main','idea'],
+    ['p3','Bath crayons',4.99,'Toys','Target','stocking','bought'],
+    ['p3','Bubbles',2.50,'Toys','Target','stocking','wrapped'],
+    ['p4','Candle set',32.00,'Other','Etsy','main','bought'],
+    ['p5','Grill tools',38.50,'Other','Amazon','main','idea'],
+    ['p6','Scarf',27.00,'Clothes','','main','bought'],
+    ['p7','Coffee sampler',29.99,'Other','','main','idea'],
+    ['p8','Photo calendar',24.99,'Other','Shutterfly','main','bought'],
+    ['p9','Bird feeder',36.00,'Other','','main','idea']
+  ].map(a=>({id:'x'+(uid++), personId:a[0], name:a[1], cost:a[2], cat:a[3], store:a[4], link:'', kind:a[5], status:a[6]}))
+};
+S.gifts[3].link = 'https://example.com/roller-skates';
+
+const money = n => (n<0?'-':'') + '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sum = a => a.reduce((t,g)=>t+g.cost,0);
+const paid = g => g.status!=='idea';
+const group = id => S.groups.find(g=>g.id===id);
+const groupOf = pid => S.groups.find(g=>g.people.some(p=>p.id===pid));
+const person = pid => groupOf(pid).people.find(p=>p.id===pid);
+const giftsOf = (pid,kind) => S.gifts.filter(g=>g.personId===pid && (!kind||g.kind===kind));
+const groupGifts = (g,kind) => S.gifts.filter(x=>g.people.some(p=>p.id===x.personId) && (!kind||x.kind===kind));
+const pct = (a,b) => b>0 ? Math.min(100, a/b*100) : (a>0?100:0);
+const c = name => `--c:var(--${name})`;
+
+function delta(spent,budget){
+  const d = budget-spent;
+  return d<0 ? `<span class="delta over num">${money(-d)} over</span>` : `<span class="delta ok num">${money(d)} left</span>`;
+}
+function meter(spent,budget,color,thin){
+  return `<div class="bar ${thin?'thin':''}"><span style="width:${pct(spent,budget)}%;${c(spent>budget?'cran':color)}"></span></div>`;
+}
+
+function home(){
+  const budget = S.groups.reduce((t,g)=>t+g.budget+g.stock,0);
+  const spent = sum(S.gifts.filter(paid));
+  const ideas = sum(S.gifts.filter(g=>!paid(g)));
+  const scale = Math.max(budget,spent);
+  return `
+  <p class="note">Layout preview with sample data. Tap around freely; nothing is saved.</p>
+  <header><h1>Christmas 2026</h1><p class="sub">Shared list. Changes will appear on both phones.</p></header>
+  <section class="card">
+    <div><span class="big num">${money(spent)}</span> <span class="of num">of ${money(budget)}</span></div>
+    <div>${delta(spent,budget)}</div>
+    <div class="bar" style="margin-top:8px">${S.groups.map(g=>`<span style="width:${sum(groupGifts(g).filter(paid))/scale*100}%;${c(g.color)}"></span>`).join('')}</div>
+    <div class="legend">${S.groups.map(g=>`<span><i class="dot" style="${c(g.color)}"></i><span class="who">${esc(g.name)}</span> <b class="num">${money(sum(groupGifts(g).filter(paid)))}</b></span>`).join('')}</div>
+    <p class="hint num">${money(ideas)} more in ideas you haven't bought yet.</p>
+  </section>
+  <h3>Groups</h3>
+  <div class="stack">${S.groups.map(g=>{
+    const sp = sum(groupGifts(g).filter(paid)), b = g.budget+g.stock;
+    return `<button class="card" data-act="open-group" data-id="${g.id}" style="${c(g.color)}">
+      <div class="row"><span class="gname">${esc(g.name)}</span><span class="chev" aria-hidden="true">›</span></div>
+      <div class="row" style="margin:4px 0 10px"><span class="num"><b>${money(sp)}</b> <span class="gmeta">of ${money(b)}</span></span>
+        <span class="gmeta">${g.people.length} ${g.people.length===1?'person':'people'}${g.stock?' · stockings':''}</span></div>
+      ${meter(sp,b,g.color,true)}
+      <div class="faces">${g.people.map(p=>`<span class="face">${esc(p.name)}</span>`).join('')}</div>
+    </button>`}).join('')}</div>
+  <button class="btn ghost" data-act="new-group">+ New group</button>`;
+}
+
+function evenLine(g){
+  const counts = g.people.map(p=>({p, n:giftsOf(p.id,'main').length}));
+  const max = Math.max(...counts.map(x=>x.n));
+  const behind = counts.filter(x=>x.n<max);
+  if(!behind.length) return `<p class="even"><b>Piles are even.</b> Everyone has ${max} main ${max===1?'gift':'gifts'}.</p>`;
+  return `<p class="even"><b>${behind.map(x=>`${esc(x.p.name)} needs ${max-x.n} more`).join(', ')}</b> to match ${max} main gifts.</p>`;
+}
+
+function giftRow(g, showWho){
+  const meta = [showWho?esc(person(g.personId).name):'', esc(g.cat), esc(g.store)].filter(Boolean).join(' · ');
+  return `<div class="gift">
+    <button class="main" data-act="edit-gift" data-id="${g.id}" aria-label="Edit ${esc(g.name)}">
+      <div class="t">${esc(g.name)}</div><div class="m">${meta}</div></button>
+    ${g.link?`<a class="m" href="${esc(g.link)}" target="_blank" rel="noopener" style="color:var(--teal)">Link ↗</a>`:''}
+    <div class="side"><span class="cost num">${money(g.cost)}</span>
+      <button class="pill ${g.status}" data-act="cycle" data-id="${g.id}" aria-label="Status ${LABEL[g.status]}, tap to change">${LABEL[g.status]}</button></div>
+  </div>`;
+}
+function giftList(list, emptyText){
+  return `<div class="list">${list.length?list.map(g=>giftRow(g)).join(''):`<div class="empty">${emptyText}</div>`}</div>`;
+}
+
+function groupView(){
+  const g = group(S.groupId);
+  if(!g.people.some(p=>p.id===S.personId)) S.personId = g.people[0] ? g.people[0].id : null;
+  const mainSpent = sum(groupGifts(g,'main').filter(paid));
+  let out = `
+  <button class="back" data-act="go" data-view="home">‹ All groups</button>
+  <header style="${c(g.color)}"><h1 style="color:var(--c)">${esc(g.name)}</h1></header>
+  <section class="card stack">
+    <div><div class="row"><span>${g.stock?'Main gifts':'Gifts'} <b class="num">${money(mainSpent)}</b> <span class="of num">of ${money(g.budget)}</span></span>${delta(mainSpent,g.budget)}</div>
+      ${meter(mainSpent,g.budget,g.color,true)}</div>
+    ${g.stock?`<div><div class="row"><span>Stockings <b class="num">${money(sum(groupGifts(g,'stocking').filter(paid)))}</b> <span class="of num">of ${money(g.stock)}</span></span>${delta(sum(groupGifts(g,'stocking').filter(paid)),g.stock)}</div>
+      ${meter(sum(groupGifts(g,'stocking').filter(paid)),g.stock,'gold',true)}</div>`:''}
+  </section>
+  <div class="people">${g.people.map(p=>{
+    const mine = giftsOf(p.id,'main');
+    return `<button class="pcard" style="${c(p.color)}" data-act="pick" data-id="${p.id}" aria-pressed="${p.id===S.personId}">
+      <div class="pn">${esc(p.name)}</div>
+      <div class="sq">${mine.map(x=>`<i class="${paid(x)?'f':''}"></i>`).join('')}</div>
+      <small>${mine.length} ${mine.length===1?'gift':'gifts'}</small>
+      <small class="num">${money(sum(giftsOf(p.id).filter(paid)))}</small></button>`}).join('')}
+    <button class="pcard add" data-act="new-person">+ Person</button></div>
+  ${g.even && g.people.length>1 ? evenLine(g) : ''}`;
+  if(!S.personId) return out + `<p class="even">Add a person to start their list.</p>`;
+
+  const p = person(S.personId), share = g.budget/g.people.length, sshare = g.stock/g.people.length;
+  const main = giftsOf(p.id,'main'), stock = giftsOf(p.id,'stocking');
+  const ms = sum(main.filter(paid)), ss = sum(stock.filter(paid));
+  const cats = {}; giftsOf(p.id).forEach(x=>cats[x.cat]=(cats[x.cat]||0)+1);
+  out += `
+  <section class="stack" style="${c(p.color)}">
+    <div><h2 style="color:var(--c)">${esc(p.name)}'s pile</h2>
+      <p class="sub num">Spent <b style="color:${ms>share?'var(--cran)':'var(--ink)'}">${money(ms)}</b> of an even share (${money(share)})</p></div>
+    ${Object.keys(cats).length?`<div class="chips">${Object.entries(cats).map(([k,n])=>`<span class="chip">${esc(k)} <b>${n}</b></span>`).join('')}</div>`:''}
+    <div class="sec"><h3>${g.stock?'Main gifts':'Gifts'}</h3><span class="gmeta num">${money(ms)} of ${money(share)}</span></div>
+    ${giftList(main,'No gifts yet.')}
+    <button class="btn" data-act="new-gift" data-kind="main">+ Add ${g.stock?'main gift':'gift'}</button>
+    ${g.stock?`
+    <div class="sec"><h3>Stocking</h3><span class="gmeta num">${money(ss)} of ${money(sshare)}</span></div>
+    ${giftList(stock,'Nothing in the stocking yet.')}
+    <button class="btn ghost" data-act="new-gift" data-kind="stocking">+ Add stocking gift</button>`:''}
+  </section>`;
+  return out;
+}
+
+function shop(){
+  const ideas = S.gifts.filter(g=>!paid(g));
+  let out = `<header><h1>Shopping list</h1><p class="sub num">${ideas.length} ${ideas.length===1?'idea':'ideas'} still to buy, about ${money(sum(ideas))}.</p></header>`;
+  if(!ideas.length) return out + `<div class="card empty">Everything on the list is bought.</div>`;
+  S.groups.forEach(g=>g.people.forEach(p=>{
+    const mine = ideas.filter(x=>x.personId===p.id);
+    if(!mine.length) return;
+    out += `<section class="stack"><div class="sec"><h3><i class="dot" style="${c(p.color)}"></i>${esc(p.name)}</h3><span class="gmeta">${esc(g.name)}</span></div>
+      <div class="list">${mine.map(x=>`<div class="gift">
+        <div class="main"><div class="t">${esc(x.name)}</div><div class="m">${[x.kind==='stocking'?'Stocking':'', esc(x.cat), esc(x.store)].filter(Boolean).join(' · ')}</div></div>
+        ${x.link?`<a class="m" href="${esc(x.link)}" target="_blank" rel="noopener" style="color:var(--teal)">Link ↗</a>`:''}
+        <div class="side"><span class="cost num">${money(x.cost)}</span>
+          <button class="pill bought" data-act="buy" data-id="${x.id}">Mark bought</button></div></div>`).join('')}</div></section>`;
+  }));
+  return out;
+}
+
+function years(){
+  const budget = S.groups.reduce((t,g)=>t+g.budget+g.stock,0), spent = sum(S.gifts.filter(paid));
+  const past = [{y:2025, s:884.12, b:850, rows:[['Kids',562.40],['Siblings',204.73],['Grandparents',116.99]]},
+                {y:2024, s:731.60, b:800, rows:[['Kids',498.10],['Siblings',233.50]]}];
+  return `<header><h1>Years</h1><p class="sub">Each Christmas keeps its own list, so you can look back at what you gave.</p></header>
+  <button class="card" data-act="go" data-view="home">
+    <div class="row"><span class="gname" style="${c('pine')}">Christmas 2026</span><span class="face">Current</span></div>
+    <div class="num" style="margin-top:4px"><b>${money(spent)}</b> <span class="gmeta">of ${money(budget)}</span></div></button>
+  ${past.map(p=>`<section class="card">
+    <div class="row"><span class="gname" style="color:var(--ink)">Christmas ${p.y}</span><span class="gmeta">Archived</span></div>
+    <div class="num" style="margin:4px 0 10px"><b>${money(p.s)}</b> <span class="gmeta">of ${money(p.b)}</span></div>
+    ${p.rows.map(r=>`<div class="row gmeta"><span>${r[0]}</span><span class="num">${money(r[1])}</span></div>`).join('')}
+  </section>`).join('')}
+  <button class="btn ghost" data-act="mock" data-msg="In the real app this archives 2026 and starts 2027 with the same groups and people.">Start Christmas 2027</button>`;
+}
+
+const ICON = {
+  home:'<path d="M12 3v18M5 9h14v12H5zM3 9h18M12 9c-2-4-6-4-6-1s4 1 6 1c2 0 6 2 6-1s-4-3-6 1"/>',
+  shop:'<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>',
+  years:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'
+};
+function tabs(){
+  const cur = S.view==='group' ? 'home' : S.view;
+  return [['home','Gifts'],['shop','Shopping'],['years','Years']].map(([v,l])=>
+    `<button data-act="go" data-view="${v}" ${cur===v?'aria-current="page"':''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[v]}</svg>${l}</button>`).join('');
+}
+
+function seg(name, opts, val){
+  return `<div class="seg">${opts.map(([v,l])=>`<input type="radio" name="${name}" id="f-${name}-${v}" value="${v}" ${v===val?'checked':''}><label for="f-${name}-${v}">${l}</label>`).join('')}</div>`;
+}
+function sheet(){
+  const sh = S.sheet;
+  if(sh.type==='gift'){
+    const g = sh.id ? S.gifts.find(x=>x.id===sh.id) : {name:'',cost:'',cat:'Toys',store:'',link:'',kind:sh.kind,status:'idea',personId:sh.personId};
+    const p = person(g.personId), grp = groupOf(g.personId);
+    return `<form class="sheet" id="form" novalidate>
+      <h2>${sh.id?'Edit gift':'New gift'} for ${esc(p.name)}</h2>
+      <div class="field"><label for="f-name">Gift</label><input type="text" id="f-name" name="name" value="${esc(g.name)}" placeholder="What is it?" required></div>
+      <div class="two">
+        <div class="field"><label for="f-cost">Cost</label><input type="number" id="f-cost" name="cost" value="${g.cost}" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+        <div class="field"><label for="f-cat">Category</label><select id="f-cat" name="cat">${CATS.map(k=>`<option ${k===g.cat?'selected':''}>${k}</option>`).join('')}</select></div>
+      </div>
+      ${grp.stock?`<div class="field"><span class="lab">Goes in</span>${seg('kind',[['main','Main gifts'],['stocking','Stocking']],g.kind)}</div>`:''}
+      <div class="field"><span class="lab">Status</span>${seg('status',[['idea','Idea'],['bought','Bought'],['wrapped','Wrapped']],g.status)}</div>
+      <div class="field"><label for="f-store">Store (optional)</label><input type="text" id="f-store" name="store" value="${esc(g.store)}" placeholder="Where from?"></div>
+      <div class="field"><label for="f-link">Link (optional)</label><input type="url" id="f-link" name="link" value="${esc(g.link)}" placeholder="https://"></div>
+      <div class="btns"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn">Save</button></div>
+      ${sh.id?`<button type="button" class="btn danger" data-act="del-gift" data-id="${sh.id}">Delete gift</button>`:''}
+    </form>`;
+  }
+  if(sh.type==='group') return `<form class="sheet" id="form" novalidate>
+      <h2>New group</h2>
+      <div class="field"><label for="f-gname">Group name</label><input type="text" id="f-gname" name="name" placeholder="Cousins, Teachers, Friends" required></div>
+      <div class="field"><label for="f-gbudget">Budget for the whole group</label><input type="number" id="f-gbudget" name="budget" min="0" step="1" inputmode="decimal" placeholder="0"></div>
+      <label class="check" for="f-geven"><input type="checkbox" id="f-geven" name="even"><span>Keep piles even<br><span class="gmeta">Compare how many gifts each person has.</span></span></label>
+      <label class="check" for="f-gstock"><input type="checkbox" id="f-gstock" name="hasStock"><span>Track stockings separately<br><span class="gmeta">Adds a stocking list and its own budget.</span></span></label>
+      <div class="field"><label for="f-gsb">Stocking budget (if tracked)</label><input type="number" id="f-gsb" name="stock" min="0" step="1" inputmode="decimal" placeholder="0"></div>
+      <div class="btns"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn">Create group</button></div>
+    </form>`;
+  return `<form class="sheet" id="form" novalidate>
+      <h2>Add someone to ${esc(group(S.groupId).name)}</h2>
+      <div class="field"><label for="f-pname">Name</label><input type="text" id="f-pname" name="name" required></div>
+      <p class="hint" style="margin:0">The group budget is re-split evenly when you add a person.</p>
+      <div class="btns"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn">Add</button></div>
+    </form>`;
+}
+
+function render(keepScroll){
+  document.getElementById('app').innerHTML = ({home, group:groupView, shop, years})[S.view]();
+  document.getElementById('tabs').innerHTML = tabs();
+  const sc = document.getElementById('scrim');
+  sc.hidden = !S.sheet;
+  sc.innerHTML = S.sheet ? sheet() : '';
+  if(!keepScroll) window.scrollTo(0,0);
+}
+let toastT;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(()=>{t.hidden = true}, 3200);
+}
+
+document.addEventListener('click', e=>{
+  if(e.target.id==='scrim'){ S.sheet=null; return render(true); }
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const {act,id} = b.dataset;
+  if(act==='go'){ S.view=b.dataset.view; return render(); }
+  if(act==='open-group'){ S.view='group'; S.groupId=id; S.personId=null; return render(); }
+  if(act==='pick'){ S.personId=id; }
+  if(act==='cycle'){ const g=S.gifts.find(x=>x.id===id); g.status=NEXT[g.status]; }
+  if(act==='buy'){ const g=S.gifts.find(x=>x.id===id); g.status='bought'; toast(g.name+' marked bought'); }
+  if(act==='new-gift') S.sheet={type:'gift', id:null, personId:S.personId, kind:b.dataset.kind};
+  if(act==='edit-gift') S.sheet={type:'gift', id};
+  if(act==='new-group') S.sheet={type:'group'};
+  if(act==='new-person') S.sheet={type:'person'};
+  if(act==='close') S.sheet=null;
+  if(act==='del-gift'){ S.gifts=S.gifts.filter(x=>x.id!==id); S.sheet=null; toast('Gift deleted'); }
+  if(act==='mock') return toast(b.dataset.msg);
+  render(true);
+});
+
+document.addEventListener('submit', e=>{
+  e.preventDefault();
+  const f = new FormData(e.target), name = (f.get('name')||'').trim(), sh = S.sheet;
+  if(!name){ e.target.querySelector('[name=name]').focus(); return toast('Give it a name first'); }
+  if(sh.type==='gift'){
+    const vals = {name, cost:Math.max(0,parseFloat(f.get('cost'))||0), cat:f.get('cat'), store:(f.get('store')||'').trim(),
+      link:/^https?:\/\//i.test(f.get('link')||'') ? f.get('link').trim() : '', status:f.get('status'), kind:f.get('kind')||'main'};
+    if(sh.id) Object.assign(S.gifts.find(x=>x.id===sh.id), vals);
+    else S.gifts.push({id:'x'+(uid++), personId:sh.personId, ...vals});
+  } else if(sh.type==='group'){
+    const g = {id:'g'+(uid++), name, color:COLORS[S.groups.length%COLORS.length], budget:Math.max(0,parseFloat(f.get('budget'))||0),
+      stock:f.get('hasStock') ? Math.max(0,parseFloat(f.get('stock'))||0) : 0, even:!!f.get('even'), people:[]};
+    S.groups.push(g); S.view='group'; S.groupId=g.id; S.personId=null;
+  } else {
+    const g = group(S.groupId), p = {id:'p'+(uid++), name, color:COLORS[g.people.length%COLORS.length]};
+    g.people.push(p); S.personId=p.id;
+  }
+  S.sheet=null; render(true);
+});
+
+render();
+</script>
